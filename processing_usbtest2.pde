@@ -46,6 +46,13 @@ myactivity.openUsbDevice();
       }
       Toast.makeText(this.getActivity(),"open devices successed",Toast.LENGTH_SHORT).show();
       isOpen = true;
+      if (myactivity.usbdriver.SetConfig(9600, (byte)8, (byte)1, (byte)0,(byte)0)) {
+          Toast.makeText(this.getActivity(), "Serial config successed!",
+              Toast.LENGTH_SHORT).show();
+        } else {
+          Toast.makeText(this.getActivity(), "Serial config failed!",
+              Toast.LENGTH_SHORT).show();
+        }
       new readThread().start();
       break;
     default:
@@ -112,10 +119,13 @@ void draw() {
       y=mouseY;
     }
   }
-  text(read_recv+"!",320,1150);
-  String[] t2 = read_recv.split(",");
+  //text(read_recv+"!",320,1150);
+  text("read String:",300,1150);
+  String[] t2 = read_recv.split(" ");
   String t1 = "";
-  for(int i = 0;i<t2.length;i++)if(t2[i].length()>0)t1+=(char)(Integer.parseInt(t2[i],16))+" ";
+  for(int i = 0;i<t2.length;i++){
+    if(t2[i].length()>=2)
+  t1+=(char)(Integer.parseInt(t2[i],16));}
   text(t1+"?",320,1210);
   new_time= millis();
   if((new_time-old_time)>100){
@@ -148,17 +158,20 @@ void draw() {
   }
 }
 
-
-
-private String toHexString(byte[] arg,int length){
-  String result = "";
-  if(arg != null){
-    for(int i=0;i<length;i++){
-      result = result+(
-      Integer.toHexString(arg[i]<0?arg[i]+256:arg[i]).length()==1?"0"+Integer.toHexString(arg[i]<0?arg[i]+256:arg[i]):Integer.toHexString(arg[i]<0?arg[i]+256:arg[i])
-      )+",";
+private String toHexString(byte[] arg, int length) {
+    String result = new String();
+    if (arg != null) {
+      for (int i = 0; i < length; i++) {
+        result = result
+            + (Integer.toHexString(
+                arg[i] < 0 ? arg[i] + 256 : arg[i]).length() == 1 ? "0"
+                + Integer.toHexString(arg[i] < 0 ? arg[i] + 256
+                    : arg[i])
+                : Integer.toHexString(arg[i] < 0 ? arg[i] + 256
+                    : arg[i])) + " ";
+      }
+      return result;
     }
-    return result;
+    return "";
   }
-  return "";
-}
+  
