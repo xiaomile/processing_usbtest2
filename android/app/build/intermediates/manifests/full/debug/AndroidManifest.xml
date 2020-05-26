@@ -13,8 +13,7 @@
     <application
         android:debuggable="true"
         android:icon="@drawable/icon"
-        android:label="processing_usbtest2"
-        android:testOnly="true" >
+        android:label="processing_usbtest2" >
         <activity
             android:name="processing.test.processing_usbtest2.MainActivity"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar.FullScreen" >

@@ -1,0 +1,7 @@
+#Internal package file, do not edit.
+#Mon May 18 16:56:27 CST 2020
+0.baseType=DIRECTORY
+0.base=D\:\\github\\processing_usbtest2\\android\\app\\build\\intermediates\\transforms\\dex\\release\\0
+0.path=classes.dex
+0.set=DEX
+count=1
