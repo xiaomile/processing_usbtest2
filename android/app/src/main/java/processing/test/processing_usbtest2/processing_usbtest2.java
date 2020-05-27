@@ -15,7 +15,12 @@ import android.content.Context;
 import android.content.DialogInterface; 
 import android.app.Dialog; 
 import android.app.AlertDialog;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
+import android.support.v7.app.AppCompatActivity;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,33 +31,24 @@ import android.content.BroadcastReceiver;
 import android.content.IntentFilter; 
 import android.app.PendingIntent; 
 import android.app.Activity; 
-import cn.wch.ch34xuartdriver.CH34xUARTDriver; 
+
 import android.os.Bundle; 
 import processing.core.PApplet;
-import com.hoho.android.usbserial.driver.UsbSerialDriver;
-import com.hoho.android.usbserial.driver.UsbSerialProber;
-import com.hoho.android.usbserial.util.HexDump;
-import com.hoho.android.usbserial.util.SerialInputOutputManager;
+
 //import cn.wch.ch34xuartdriver.*;
 
-import java.util.HashMap; 
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.ArrayList; 
 import java.io.File; 
 import java.io.BufferedReader; 
 import java.io.PrintWriter; 
 import java.io.InputStream; 
 import java.io.OutputStream; 
-import java.io.IOException; 
+import java.io.IOException;
+import java.util.Set;
 
 public class processing_usbtest2 extends PApplet {
-
-
-
-
-
-
-
-
 
 
 //import android.os.Message;
@@ -68,62 +64,7 @@ public void onCreate(Bundle savedInstanceState) {
 super.onCreate(savedInstanceState);
 
 try{
-myactivity = new MyActivity(this);
-myactivity.openUsbDevice();
-  if(!myactivity.UsbFeatureSupported()){
-    new AlertDialog.Builder(this.getActivity())
-    .setTitle("notice")
-    .setMessage("Your cell phone does not support USB HOST,Please change and try again!")
-    .setPositiveButton("exit",new DialogInterface.OnClickListener(){
-      @Override
-      public void onClick(DialogInterface arg0,int arg1){System.exit(0);}
-    }).create();
-  }
-  //System.out.print("isopen");
-  if(!isOpen){
-    //retval = myactivity.usbdriver.ResumeUsbList();
-    retval=0;
-    switch(retval){
-    case -1:
-      Toast.makeText(this.getActivity(),"open devices failed",Toast.LENGTH_SHORT).show();
-      myactivity.usbdriver.close();
-      break;
-    case 0:
-      //if(!myactivity.usbdriver.UartInit()){
-      //  Toast.makeText(this.getActivity(),"device init failed",Toast.LENGTH_SHORT).show();
-      //  return;
-      //}
-      Toast.makeText(this.getActivity(),"open devices successed",Toast.LENGTH_SHORT).show();
-      isOpen = true;
-      //if (myactivity.usbdriver.SetConfig(9600, (byte)8, (byte)1, (byte)0,(byte)0)) {
-      //    Toast.makeText(this.getActivity(), "Serial config successed!",
-      //        Toast.LENGTH_SHORT).show();
-      //  } else {
-      //    Toast.makeText(this.getActivity(), "Serial config failed!",
-      //        Toast.LENGTH_SHORT).show();
-      //  }
-      myactivity.usbdriver.setBaudRate(9600);
-      new readThread().start();
-      break;
-    default:
-      AlertDialog.Builder builder = new AlertDialog.Builder(this.getActivity());
-      builder.setTitle("no permission"+" "+str(retval)+"!");
-      builder.setMessage("Confirm to exit?");
-      builder.setPositiveButton("confirm",new DialogInterface.OnClickListener(){
-      @Override
-      public void onClick(DialogInterface arg0,int arg1){System.exit(0);}
-      });
-      builder.setNegativeButton("cancel",new DialogInterface.OnClickListener(){
-      @Override
-      public void onClick(DialogInterface arg0,int arg1){}
-      });
-      builder.show();
-    }
-  }
-  else{
-    myactivity.usbdriver.close();
-    isOpen = false;
-  }
+    myactivity = new MyActivity(this);
 }
 catch(Exception e){
 e.printStackTrace();
@@ -132,11 +73,7 @@ e.printStackTrace();
   
   */
 }
-@Override
-    public void onDestroy() {
-        myactivity.context.unregisterReceiver(myactivity.mUsbPermissionActionReceiver);
-        super.onDestroy();
-}
+
 public void onActivityResult(int requestCode, int resultCode, Intent data) {
 //bt.onActivityResult(requestCode, resultCode, data);
 }
@@ -188,18 +125,16 @@ public void draw() {
     val_write[0] = s1;
     //bt.broadcast(val_write);
     try{
-        myactivity.usbdriver.write(val_write,val_write.length);
+        myactivity.usbService.write(val_write);
     }
     catch(Exception e){
-        //System.out.println(e.getMessage());
-
-        Toast.makeText(this.myactivity.context,e.getMessage(),Toast.LENGTH_LONG).show();
+        System.out.println("Exception:"+e.getMessage());
     }
     old_s = s1;}
     old_time=new_time;
 }
 }
-
+/*
   private class readThread extends Thread{
   public void run(){
     byte[] buffer = new byte[4096];
@@ -210,7 +145,7 @@ public void draw() {
       }
       int length = 0;
       try{
-          length = myactivity.usbdriver.read(buffer,4096);
+          length = myactivity.usbService.read;
       }
       catch(Exception e){
           Toast.makeText(myactivity.context,e.getMessage(),Toast.LENGTH_LONG).show();
@@ -225,7 +160,7 @@ public void draw() {
     }
   }
 }
-
+*/
 private String toHexString(byte[] arg, int length) {
     String result = new String();
     if (arg != null) {
@@ -242,7 +177,6 @@ private String toHexString(byte[] arg, int length) {
     }
     return "";
   }
-  
 
 
 
@@ -255,140 +189,149 @@ private String toHexString(byte[] arg, int length) {
 
 
 
-public class MyActivity {
-  private static final String ACTION_USB_PERMISSION = "cn.wch.wchusbdriver.USB_PERMISSION";
-  PApplet parent;
-  Context context;
-  String read_recv = "";
-  //public CH34xUARTDriver usbdriver;
-  public UsbSerialDriver usbdriver;
-  
-  public MyActivity(PApplet parent){
-    this.parent = parent;
-    this.context = parent.getActivity();
-    //usbdriver = new CH34xUARTDriver((UsbManager)context.getSystemService(Context.USB_SERVICE),context,ACTION_USB_PERMISSION);
 
-  }
-  
-  /**
-     *  usb 
-     */
-  public boolean UsbFeatureSupported()
-  {
-      boolean bool;
-      return bool = this.context.getPackageManager().hasSystemFeature("android.hardware.usb.host");
-  }
-    private void openUsbDevice(){
-        //before open usb device
-        //should try to get usb permission
-        tryGetUsbPermission();
+    public class MyActivity extends AppCompatActivity {
+
+
+        private UsbService usbService;
+        private TextView display;
+        private EditText editText;
+        private MyHandler mHandler;
+        private PApplet parent;
+        private Context context;
+        public MyActivity(PApplet parent){
+            this.parent = parent;
+            this.context = parent.getActivity();
+
+        }
+        private final ServiceConnection usbConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName arg0, IBinder arg1) {
+                usbService = ((UsbService.UsbBinder) arg1).getService();
+                usbService.setHandler(mHandler);
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName arg0) {
+                usbService = null;
+            }
+        };
         /*
-        // Find all available drivers from attached devices.
-        UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
-        if (availableDrivers.isEmpty()) {
-          return;
-        }
-
-       // Open a connection to the first available driver.
-       UsbSerialDriver driver = availableDrivers.get(0);
-       UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
-       if (connection == null) {
-          // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
-          return;
-       }
-
-       UsbSerialPort port = driver.getPorts().get(0); // Most devices have just one port (port 0)
-       port.open(connection);
-       port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+         * Notifications from UsbService will be received here.
          */
-    }
-    UsbManager mUsbManager;
-    
-
-    private void tryGetUsbPermission(){
-
-        mUsbManager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
-
-        IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-        context.registerReceiver(mUsbPermissionActionReceiver, filter);
-
-        PendingIntent mPermissionIntent = PendingIntent.getBroadcast(this.context, 0, new Intent(ACTION_USB_PERMISSION), 0);
-
-        //here do emulation to ask all connected usb device for permission
-        for (final UsbDevice usbDevice : mUsbManager.getDeviceList().values()) {
-            //add some conditional check if necessary
-            //if(isWeCaredUsbDevice(usbDevice)){
-            if(mUsbManager.hasPermission(usbDevice)){
-                //if has already got permission, just goto connect it
-                //that means: user has choose yes for your previously popup window asking for grant perssion for this usb device
-                //and also choose option: not ask again
-                afterGetUsbPermission(usbDevice);
-            }else{
-                //this line will let android popup window, ask user whether to allow this app to have permission to operate this usb device
-                mUsbManager.requestPermission(usbDevice, mPermissionIntent);
+        private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                switch (intent.getAction()) {
+                    case UsbService.ACTION_USB_PERMISSION_GRANTED: // USB PERMISSION GRANTED
+                        Toast.makeText(context, "USB Ready", Toast.LENGTH_SHORT).show();
+                        break;
+                    case UsbService.ACTION_USB_PERMISSION_NOT_GRANTED: // USB PERMISSION NOT GRANTED
+                        Toast.makeText(context, "USB Permission not granted", Toast.LENGTH_SHORT).show();
+                        break;
+                    case UsbService.ACTION_NO_USB: // NO USB CONNECTED
+                        Toast.makeText(context, "No USB connected", Toast.LENGTH_SHORT).show();
+                        break;
+                    case UsbService.ACTION_USB_DISCONNECTED: // USB DISCONNECTED
+                        Toast.makeText(context, "USB disconnected", Toast.LENGTH_SHORT).show();
+                        break;
+                    case UsbService.ACTION_USB_NOT_SUPPORTED: // USB NOT SUPPORTED
+                        Toast.makeText(context, "USB device not supported", Toast.LENGTH_SHORT).show();
+                        break;
+                }
             }
-            //}
-        }
-    }
-
-
-    private void afterGetUsbPermission(UsbDevice usbDevice){
-        //call method to set up device communication
-        //Toast.makeText(this, String.valueOf("Got permission for usb device: " + usbDevice), Toast.LENGTH_LONG).show();
-        //Toast.makeText(this, String.valueOf("Found USB device: VID=" + usbDevice.getVendorId() + " PID=" + usbDevice.getProductId()), Toast.LENGTH_LONG).show();
-
-        doYourOpenUsbDevice(usbDevice);
-    }
-
-    private void doYourOpenUsbDevice(UsbDevice usbDevice){
-        //now follow line will NOT show: User has not given permission to device UsbDevice
-        UsbDeviceConnection connection = mUsbManager.openDevice(usbDevice);
-        //System.out.println("doYourOpenUsbDevice");
-        Toast.makeText(context, String.valueOf("device opened" + usbDevice), Toast.LENGTH_LONG).show();
-        //add your operation code here
-    }
-
-    private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+        };
+/*
         @Override
-        public void onReceive(Context context, Intent intent) {
-            switch (intent.getAction()) {
-                case UsbService.ACTION_USB_PERMISSION_GRANTED: // USB PERMISSION GRANTED
-                    Toast.makeText(context, "USB Ready", Toast.LENGTH_SHORT).show();
-                    break;
-                case UsbService.ACTION_USB_PERMISSION_NOT_GRANTED: // USB PERMISSION NOT GRANTED
-                    Toast.makeText(context, "USB Permission not granted", Toast.LENGTH_SHORT).show();
-                    break;
-                case UsbService.ACTION_NO_USB: // NO USB CONNECTED
-                    Toast.makeText(context, "No USB connected", Toast.LENGTH_SHORT).show();
-                    break;
-                case UsbService.ACTION_USB_DISCONNECTED: // USB DISCONNECTED
-                    Toast.makeText(context, "USB disconnected", Toast.LENGTH_SHORT).show();
-                    break;
-                case UsbService.ACTION_USB_NOT_SUPPORTED: // USB NOT SUPPORTED
-                    Toast.makeText(context, "USB device not supported", Toast.LENGTH_SHORT).show();
-                    break;
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+
+            mHandler = new MyHandler(this);
+
+            display = (TextView) findViewById(R.id.textView1);
+            editText = (EditText) findViewById(R.id.editText1);
+            Button sendButton = (Button) findViewById(R.id.buttonSend);
+            sendButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (!editText.getText().toString().equals("")) {
+                        String data = editText.getText().toString();
+                        if (usbService != null) { // if UsbService was correctly binded, Send data
+                            usbService.write(data.getBytes());
+                        }
+                    }
+                }
+            });
+        }
+*/
+        @Override
+        public void onResume() {
+            super.onResume();
+            setFilters();  // Start listening notifications from UsbService
+            startService(UsbService.class, usbConnection, null); // Start UsbService(if it was not started before) and Bind it
+        }
+
+        @Override
+        public void onPause() {
+            super.onPause();
+            unregisterReceiver(mUsbReceiver);
+            unbindService(usbConnection);
+        }
+
+        private void startService(Class<?> service, ServiceConnection serviceConnection, Bundle extras) {
+            if (!UsbService.SERVICE_CONNECTED) {
+                Intent startService = new Intent(this, service);
+                if (extras != null && !extras.isEmpty()) {
+                    Set<String> keys = extras.keySet();
+                    for (String key : keys) {
+                        String extra = extras.getString(key);
+                        startService.putExtra(key, extra);
+                    }
+                }
+                startService(startService);
+            }
+            Intent bindingIntent = new Intent(this, service);
+            bindService(bindingIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+        }
+
+        private void setFilters() {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(UsbService.ACTION_USB_PERMISSION_GRANTED);
+            filter.addAction(UsbService.ACTION_NO_USB);
+            filter.addAction(UsbService.ACTION_USB_DISCONNECTED);
+            filter.addAction(UsbService.ACTION_USB_NOT_SUPPORTED);
+            filter.addAction(UsbService.ACTION_USB_PERMISSION_NOT_GRANTED);
+            registerReceiver(mUsbReceiver, filter);
+        }
+
+        /*
+         * This handler will be passed to UsbService. Data received from serial port is displayed through this handler
+         */
+        private class MyHandler extends Handler {
+            private final WeakReference<MainActivity> mActivity;
+
+            public MyHandler(MainActivity activity) {
+                mActivity = new WeakReference<>(activity);
+            }
+
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what) {
+                    case UsbService.MESSAGE_FROM_SERIAL_PORT:
+                        String data = (String) msg.obj;
+                        //mActivity.get().display.append(data);
+                        break;
+                    case UsbService.CTS_CHANGE:
+                        Toast.makeText(mActivity.get(), "CTS_CHANGE",Toast.LENGTH_LONG).show();
+                        break;
+                    case UsbService.DSR_CHANGE:
+                        Toast.makeText(mActivity.get(), "DSR_CHANGE",Toast.LENGTH_LONG).show();
+                        break;
+                }
             }
         }
-    };
-    private UsbService usbService;
-    private TextView display;
-    private EditText editText;
-    private MyHandler mHandler;
-    private final ServiceConnection usbConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName arg0, IBinder arg1) {
-            usbService = ((UsbService.UsbBinder) arg1).getService();
-            usbService.setHandler(mHandler);
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            usbService = null;
-        }
-    };
-
-}
+    }
 
   public void settings() {  fullScreen();  smooth(); }
 }

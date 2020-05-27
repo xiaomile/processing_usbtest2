@@ -170,7 +170,14 @@ public class UsbService extends Service {
         if (serialPort != null)
             serialPort.write(data);
     }
+    /*
+    public String read() {
+        String data = "";
+        if (serialPort != null)
+            data = serialPort.serialPort.read (mCallback);
 
+    }
+    */
     public void setHandler(Handler mHandler) {
         this.mHandler = mHandler;
     }
